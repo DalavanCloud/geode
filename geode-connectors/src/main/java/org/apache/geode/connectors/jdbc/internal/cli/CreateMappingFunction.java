@@ -26,6 +26,8 @@ import org.apache.geode.connectors.jdbc.internal.JdbcConnectorService;
 import org.apache.geode.connectors.jdbc.internal.RegionMappingExistsException;
 import org.apache.geode.connectors.jdbc.internal.configuration.RegionMapping;
 import org.apache.geode.connectors.util.internal.MappingCommandUtils;
+import org.apache.geode.internal.cache.LocalRegion;
+import org.apache.geode.internal.cache.PartitionedRegion;
 import org.apache.geode.management.cli.CliFunction;
 import org.apache.geode.management.internal.cli.functions.CliFunctionResult;
 
@@ -75,9 +77,19 @@ public class CreateMappingFunction extends CliFunction<Object[]> {
    * and the given async-event-queue as one of its queues.
    */
   private void alterRegion(Region<?, ?> region, String queueName, boolean synchronous) {
-    region.getAttributesMutator().setCacheLoader(new JdbcLoader());
+    boolean isProxy = false;
+    if (region instanceof PartitionedRegion) {
+      isProxy = ((PartitionedRegion) region).getLocalMaxMemory() == 0;
+    } else {
+      isProxy = ((LocalRegion) region).isProxy();
+    }
+    if (!isProxy) {
+      region.getAttributesMutator().setCacheLoader(new JdbcLoader());
+    }
     if (synchronous) {
-      region.getAttributesMutator().setCacheWriter(new JdbcWriter());
+      if (!isProxy) {
+        region.getAttributesMutator().setCacheWriter(new JdbcWriter());
+      }
     } else {
       region.getAttributesMutator().addAsyncEventQueueId(queueName);
     }

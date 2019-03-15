@@ -47,6 +47,7 @@ import org.apache.geode.connectors.util.internal.MappingCommandUtils;
 import org.apache.geode.distributed.DistributedMember;
 import org.apache.geode.distributed.DistributedSystem;
 import org.apache.geode.internal.cache.InternalCache;
+import org.apache.geode.internal.cache.LocalRegion;
 import org.apache.geode.management.internal.cli.functions.CliFunctionResult;
 
 public class CreateMappingFunctionTest {
@@ -71,7 +72,7 @@ public class CreateMappingFunctionTest {
     context = mock(FunctionContext.class);
     resultSender = mock(ResultSender.class);
     cache = mock(InternalCache.class);
-    region = mock(Region.class);
+    region = mock(LocalRegion.class);
     DistributedSystem system = mock(DistributedSystem.class);
     distributedMember = mock(DistributedMember.class);
     service = mock(JdbcConnectorService.class);
@@ -219,6 +220,15 @@ public class CreateMappingFunctionTest {
 
   @Test
   public void executeCreatesParallelAsyncQueueForPartitionedRegion() throws Exception {
+    when(attributes.getDataPolicy()).thenReturn(DataPolicy.PARTITION);
+    function.executeFunction(context);
+
+    verify(asyncEventQueueFactory, times(1)).create(any(), any());
+    verify(asyncEventQueueFactory, times(1)).setParallel(true);
+  }
+
+  @Test
+  public void executeCreatesPartitionedProxyShouldNotContainWriterOrLoader() throws Exception {
     when(attributes.getDataPolicy()).thenReturn(DataPolicy.PARTITION);
     function.executeFunction(context);
 
